@@ -2,6 +2,7 @@
   {
     "Nmap": {
       "json": "nmap_output.json",
+      "xml": "nmap_xml.xml",
       "text": "nmap_output.txt",
       "config": "config/nmap_config.json"
     }

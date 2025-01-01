@@ -1,114 +1,111 @@
-import sys
-import re
-import json
 import os
-from typing import Optional
+import json
+import xml.etree.ElementTree as ET
 
 
-def parse_nmap_output(nmap_output):
-    # Initialize the result dictionary
-    result = {
-        'ports': [],
-        'service_info': '',
-        'scan_summary': ''
-    }
+def parse_nmap_xml(xml_file):
+    """
+    Parses an Nmap XML file and converts the entire XML tree into a JSON-compatible dictionary.
+    """
+    def xml_to_dict(element):
+        """
+        Recursively converts an XML element and its children into a dictionary.
+        """
+        node = {}
+        # Add element attributes
+        if element.attrib:
+            node.update({"@attributes": element.attrib})
 
-    # Regular expressions to capture port details and service info
-    port_pattern = re.compile(r"(\d+/tcp)\s+(\S+)\s+(\S+)\s*(.*)")
-    service_info_pattern = re.compile(r"Service Info: (.*)")
-    scan_summary_pattern = re.compile(r"Nmap done:.*scanned in (.*) seconds")
+        # Add element text content
+        if element.text and element.text.strip():
+            node.update({"@text": element.text.strip()})
 
-    # Split the input into lines
-    lines = nmap_output.splitlines()
+        # Recursively process child elements
+        children = list(element)
+        if children:
+            child_dict = {}
+            for child in children:
+                child_name = child.tag
+                child_data = xml_to_dict(child)
 
-    # Process each line
-    for line in lines:
-        # Match port details
-        port_match = port_pattern.match(line)
-        if port_match:
-            port = port_match.group(1)
-            state = port_match.group(2)
-            service = port_match.group(3)
-            version = port_match.group(4) if port_match.group(4) else ""  # Use empty string if version is missing
-            result['ports'].append({
-                'port': port,
-                'state': state,
-                'service': service,
-                'version': version
-            })
+                # Handle multiple children with the same tag
+                if child_name in child_dict:
+                    if not isinstance(child_dict[child_name], list):
+                        child_dict[child_name] = [child_dict[child_name]]
+                    child_dict[child_name].append(child_data)
+                else:
+                    child_dict[child_name] = child_data
 
-        # Match service info
-        service_info_match: Optional[re.Match] = service_info_pattern.match(line)  # Add type hint here
-        if service_info_match:
-            result['service_info'] = service_info_match.group(1)
+            node.update({"@children": child_dict})
 
-        # Match scan summary
-        scan_summary_match = scan_summary_pattern.search(line)
-        if scan_summary_match:
-            result['scan_summary'] = scan_summary_match.group(0)
+        return node
 
-    # Return the parsed result as a JSON string
-    return json.dumps(result, indent=4)
+    # Parse the XML file
+    try:
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        return json.dumps(xml_to_dict(root), indent=4)
+    except ET.ParseError as e:
+        raise ValueError(f"Error parsing XML file: {e}")
+    except Exception as e:
+        raise ValueError(f"Unexpected error during XML parsing: {e}")
 
 
 def get_filenames_from_record():
-    # Define the filename for the filenames record
+    """
+    Retrieve file paths from the filenames record JSON.
+    """
     filenames_record_file = os.path.join(os.path.dirname(__file__), '..', 'filenames.json')
 
-    # If the file doesn't exist, create it with an empty list
     if not os.path.exists(filenames_record_file):
-        filenames_record = []
-    else:
-        # Read existing filenames from the file
-        with open(filenames_record_file, 'r') as f:
-            filenames_record = json.load(f)
+        raise FileNotFoundError("The filenames record 'filenames.json' does not exist.")
 
-    # Find the "Nmap" entry in the record
+    with open(filenames_record_file, 'r') as f:
+        try:
+            filenames_record = json.load(f)
+        except json.JSONDecodeError:
+            raise ValueError("The filenames record is not a valid JSON file.")
+
     for record in filenames_record:
         if 'Nmap' in record:
             return record['Nmap']
 
-    # If no Nmap entry exists, raise an error
-    raise ValueError("No Nmap entry found in filenames record.")
+    raise ValueError("No 'Nmap' entry found in the filenames record.")
 
-
-def save_to_files(nmap_output, parsed_result, nmap_files):
-    # Define the output folder (same level as the script)
+def save_to_json_file(parsed_result, nmap_files):
+    """
+    Save the parsed JSON data to a file in the output folder.
+    """
     output_folder = "output"
+    os.makedirs(output_folder, exist_ok=True)
 
-    # Check if the output folder exists, create it if not
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    # Construct paths for the text and json files
-    text_file_path = os.path.join(output_folder, nmap_files['text'])
+    # Construct the JSON file path
     json_file_path = os.path.join(output_folder, nmap_files['json'])
 
-    # Save the raw Nmap output to a .txt file
-    with open(text_file_path, 'w') as text_file:
-        text_file.write(nmap_output)
+    # Avoid overwriting an existing JSON file
+    if os.path.exists(json_file_path):
+        raise FileExistsError(f"The JSON file '{nmap_files['json']}' already exists. Remove it or change the filename.")
 
     # Save the parsed result to the JSON file
     with open(json_file_path, 'w') as json_file:
         json_file.write(parsed_result)
 
 
-def main():
-    print("Starting python analysis on nmap output")
-
-    # Read the entire content from stdin (fix for your error)
-    nmap_output = sys.stdin.read()
-
-    # Parse the Nmap output
-    parsed_result = parse_nmap_output(nmap_output)
-
-    # Get the file names from the filenames record
-    nmap_files = get_filenames_from_record()
-
-    # Save both the raw Nmap output and the parsed result to files
-    save_to_files(nmap_output, parsed_result, nmap_files)
-    print("Finished python analysis")
-
-
 if __name__ == "__main__":
-    main()
+    try:
+        nmap_xml_path = "output/nmap_xml.xml"  # Path to the existing XML file
+        nmap_files = get_filenames_from_record()  # Get filenames from the record
+
+        # Parse the Nmap XML file and convert it to JSON
+        parsed_json = parse_nmap_xml(nmap_xml_path)
+
+        # Save only the JSON file
+        save_to_json_file(parsed_json, nmap_files)
+
+        print("Nmap JSON file saved successfully.")
+    except FileNotFoundError as e:
+        print(f"File error: {e}")
+    except ValueError as e:
+        print(f"Data error: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")

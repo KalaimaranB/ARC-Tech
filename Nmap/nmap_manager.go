@@ -85,6 +85,8 @@ func ExecuteNmap(targetIP string) {
 
 	// Execute Nmap scan with the constructed command
 	fmt.Println("Executing nmap with :" + strings.Join(cmdArgs, " ") + " ...")
+	cmdArgs = append(cmdArgs, "-oX", "output/nmap_xml.xml")
+	fmt.Println(cmdArgs)
 	nmapOutput, err := runNmap(cmdArgs)
 
 	// Stop themed messages
