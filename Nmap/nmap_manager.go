@@ -2,12 +2,16 @@ package Nmap
 
 import (
 	"ARC-Tech/Utilities"
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/fatih/color"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -17,14 +21,71 @@ import (
 // - targetIP: The target IP address to scan.
 func ExecuteNmap(targetIP string) {
 	greenBold := color.New(color.FgGreen, color.Bold)
-	Utilities.ErrorCheckedColourPrint(greenBold, "Starting Nmap scan...")
+	var userInput string
+
+	fmt.Println("First task is to run an nmap scan with Commander Cody. Would you like to:")
+	fmt.Println("(1) Use default options")
+	fmt.Println("(2) Type your own nmap command line flags")
+	fmt.Println("(3) Have Commander Cody assist in building a command")
+
+	_, err := fmt.Scanln(&userInput)
+
+	// Check user input and handle accordingly
+	var cmdArgs []string
+	switch userInput {
+	case "1":
+		// Search for the config file path
+		filePath, err := Utilities.SearchFileNames("Nmap", "config")
+		if err != nil {
+			log.Fatalf("Failed to locate config file: %v", err)
+		}
+
+		// Load default Nmap options
+		Utilities.ErrorCheckedColourPrint(greenBold, "Using default Nmap options.")
+		cmdArgs, err = loadDefaultNmapFlags(filePath)
+		if err != nil {
+			log.Fatalf("Failed to load default options: %v", err)
+		}
+		cmdArgs = append(cmdArgs, targetIP)
+
+	case "2":
+		fmt.Println("Enter your custom nmap flags:")
+		reader := bufio.NewReader(os.Stdin)
+		customFlags, err := reader.ReadString('\n') // Read the full line of input
+		if err != nil {
+			fmt.Println("Error reading input:", err)
+			return
+		}
+
+		customFlags = strings.TrimSpace(customFlags)
+		// Proceed to use the flags provided
+		fmt.Println("You entered:", customFlags)
+		// Add customFlags to the nmap command
+		customFlagsList := strings.Fields(customFlags) // Split by spaces
+		cmdArgs = append(cmdArgs, customFlagsList...)  // Add custom flags to the nmap command
+		cmdArgs = append(cmdArgs, targetIP)
+
+	case "3":
+		// Integrate Commander Cody's assistance (interactive flag selection)
+		Utilities.ErrorCheckedColourPrint(greenBold, "Commander Cody is assisting you with flag selection...")
+		cmdArgs, err = getCommanderCodyFlags(targetIP)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+	default:
+		fmt.Println("Invalid option selected, exiting.")
+		os.Exit(1)
+	}
 
 	// Start themed messages in a goroutine
 	stopChan := make(chan bool)
 	go showCloneWarsThemedMessages(stopChan)
 
-	// Execute Nmap scan and save the output to a .txt file
-	nmapOutput, err := runNmap(targetIP)
+	// Execute Nmap scan with the constructed command
+	fmt.Println("Executing nmap with :" + strings.Join(cmdArgs, " ") + " ...")
+	nmapOutput, err := runNmap(cmdArgs)
 
 	// Stop themed messages
 	stopChan <- true
@@ -46,80 +107,110 @@ func ExecuteNmap(targetIP string) {
 	Utilities.ErrorCheckedColourPrint(greenBold, "Nmap processing complete.")
 }
 
-// Function to build the Nmap command from the configuration
-func buildNmapCommand(target string, configs []map[string]interface{}) ([]string, error) {
-	// Initialize the nmap command with the target
-	cmdArgs := []string{target}
+// Function to load default Nmap flags from the JSON file
+// Function to load default Nmap flags from the JSON file
+func loadDefaultNmapFlags(filename string) ([]string, error) {
+	configs, err := Utilities.LoadFilenamesConfig(filename)
+	if err != nil {
+		return nil, fmt.Errorf("error loading Nmap flags from %s: %v", filename, err)
+	}
 
-	// Loop through the flags from the config file and append them to the command
-	for _, config := range configs {
-		// Access the "nmap_flags" directly as it is no longer under "Nmap"
-		if nmapFlags, ok := config["nmap_flags"]; ok {
-			// nmapFlags is a slice of maps, where each map has a "flag" and "value"
-			if flags, ok := nmapFlags.([]interface{}); ok {
-				for _, flagEntry := range flags {
-					// Each entry is a map containing "flag" and "value"
-					if flagMap, ok := flagEntry.(map[string]interface{}); ok {
-						flag, flagOk := flagMap["flag"].(string)
-						value, valueOk := flagMap["value"].(string)
+	// Assume the first config contains the "nmap_flags" key
+	if len(configs) == 0 {
+		return nil, fmt.Errorf("no configurations found in file")
+	}
 
-						// If flag exists, append it to the command arguments
-						if flagOk {
-							if valueOk && value != "" {
-								// If value is present, add flag and value
-								cmdArgs = append(cmdArgs, flag, value)
-							} else {
-								// If value is empty, just add the flag
-								cmdArgs = append(cmdArgs, flag)
-							}
-						}
-					}
-				}
-			}
+	nmapFlags, ok := configs[0]["nmap_flags"].([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("'nmap_flags' key is missing or malformed")
+	}
+
+	// Convert the flags into a slice of strings
+	var cmdArgs []string
+	for _, item := range nmapFlags {
+		flag, isMap := item.(map[string]interface{})
+		if !isMap {
+			continue
+		}
+
+		// Extract flag and value
+		flagName, _ := flag["flag"].(string)
+		flagValue, _ := flag["value"].(string)
+
+		cmdArgs = append(cmdArgs, flagName)
+		if flagValue != "" {
+			cmdArgs = append(cmdArgs, flagValue)
 		}
 	}
 
 	return cmdArgs, nil
 }
 
+// getCommanderCodyFlags interacts with Commander Cody to select Nmap flags
+func getCommanderCodyFlags(targetIP string) ([]string, error) {
+	// Create the Python command
+	cmd := exec.Command("python3", "Nmap/nmap_wizard.py")
+
+	// Attach Stdin, Stdout, and Stderr to allow interaction
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	// Run the Python script
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("error invoking Commander Cody: %v", err)
+	}
+
+	// Read JSON file
+	jsonFile, err := os.Open("intermediate_data/selected_nmap_flags.json")
+	if err != nil {
+		return nil, fmt.Errorf("error reading JSON file: %v", err)
+	}
+	defer func(jsonFile *os.File) {
+		err := jsonFile.Close()
+		if err != nil {
+
+		}
+	}(jsonFile)
+
+	// Parse JSON file into Go structure
+	var selectedFlags []map[string]string
+	if err := json.NewDecoder(jsonFile).Decode(&selectedFlags); err != nil {
+		return nil, fmt.Errorf("error parsing JSON: %v", err)
+	}
+
+	// Convert the parsed flags to command-line arguments
+	var cmdArgs []string
+	for _, flag := range selectedFlags {
+		if value, exists := flag["value"]; exists {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("%s=%s", flag["flag"], value))
+		} else {
+			cmdArgs = append(cmdArgs, flag["flag"])
+		}
+	}
+
+	// Add target IP as the first argument
+	return append([]string{targetIP}, cmdArgs...), nil
+}
+
 // runNmap executes a Nmap scan with the specified parameters and captures the output.
 // Parameters:
 // - target: The target IP or hostname to scan.
+// - cmdArgs: The arguments for the Nmap command.
 // Returns:
 // - string: The captured output from the Nmap scan.
 // - error: Any errors encountered during execution.
-func runNmap(target string) (string, error) {
-	// Load the nmap config file using the SearchFileNames method
-	configFile, err := Utilities.SearchFileNames("Nmap", "config")
-	if err != nil {
-		return "", fmt.Errorf("could not find config file: %v", err)
-	}
-
-	// Load the actual config file
-	configs, err := Utilities.LoadFilenamesConfig(configFile)
-	if err != nil {
-		return "", fmt.Errorf("could not load nmap config: %v", err)
-	}
-
-	// Build the Nmap command using the helper method
-	cmdArgs, err := buildNmapCommand(target, configs)
-	if err != nil {
-		return "", fmt.Errorf("could not build Nmap command: %v", err)
-	}
-
+func runNmap(cmdArgs []string) (string, error) {
 	// Execute the Nmap command
 	cmd := exec.Command("nmap", cmdArgs...)
-
-	// Capture output
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("Nmap execution failed: %v\nOutput: %s", err, out.String())
 	}
-
 	return out.String(), nil
 }
 
@@ -134,14 +225,9 @@ func runPythonScript(input string) error {
 	// Pass Nmap output to Python script via stdin
 	cmd.Stdin = bytes.NewReader([]byte(input))
 
-	// Capture output
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
 	err := cmd.Run()
 	if err != nil {
-		return fmt.Errorf("Python script execution failed: %v\nOutput: %s", err, out.String())
+		return fmt.Errorf("Python script execution failed: %v\n", err)
 	}
 	return nil
 }

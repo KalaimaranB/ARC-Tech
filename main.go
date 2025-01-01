@@ -4,6 +4,7 @@ import "ARC-Tech/Nmap"
 
 func main() {
 	DisplayIntro()
-	Nmap.ExecuteNmap("127.0.0.1")
-	//45.33.32.156
+	ipAddress := StartProgram()
+	Nmap.ExecuteNmap(ipAddress)
+	//Scan me Nmap: 45.33.32.156
 }

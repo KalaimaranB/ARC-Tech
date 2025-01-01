@@ -75,3 +75,19 @@ func DisplayIntro() {
 	// Print closing message
 	Utilities.ErrorCheckedColourPrint(magentaBold, "\nMay the Force guide your efforts, Commander. The Republic depends on you.")
 }
+
+func StartProgram() string {
+	var targetIP string
+
+	// Prompt the user for the IP address
+	fmt.Print("Enter the target IP address: ")
+
+	// Read the input from the user
+	_, err := fmt.Scanln(&targetIP)
+	if err != nil {
+		return ""
+	}
+
+	// Return the IP address
+	return targetIP
+}

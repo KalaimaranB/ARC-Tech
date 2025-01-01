@@ -1,122 +1,111 @@
 import json
-import sys
+import os
 
-# Color codes for terminal styling
 class Colors:
     HEADER = '\033[95m'
-    OKBLUE = '\033[94m'
-    OKCYAN = '\033[96m'
-    OKGREEN = '\033[92m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
     WARNING = '\033[93m'
     FAIL = '\033[91m'
-    ENDC = '\033[0m'
+    END = '\033[0m'
     BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
-def load_flag_data(file_path='Nmap/flags_data.json'):
-    """Load flag categories and descriptions from a JSON file."""
+
+OUTPUT_FILE = "selected_nmap_flags.json"
+
+def save_to_json(data):
+
     try:
-        with open(file_path, 'r') as file:
-            return json.load(file)
-    except FileNotFoundError:
-        print(f"{Colors.FAIL}Error: The file {file_path} was not found.{Colors.ENDC}")
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f"{Colors.FAIL}Error: Failed to parse JSON data.{Colors.ENDC}")
-        sys.exit(1)
+        # Ensure the data is in a valid format
 
-def ask_question(question, options):
-    """Generic function to ask a question and return the user's choice."""
-    print(Colors.HEADER + question + Colors.ENDC)
-    for i, (key, value) in enumerate(options.items(), start=1):
-        print(f"{i}. {Colors.OKCYAN}{key}{Colors.ENDC}: {value}")
-    print(Colors.WARNING + "Enter the number(s) of your choice, separated by commas (or 'skip' to decline): " + Colors.ENDC, end='')
-    choice = input()
-    return choice
+        # Check if the output folder exists, create it if not
+        output_folder = "intermediate_data"
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
-def select_flags(category):
-    """Select specific flags based on user input."""
-    print(f"\n{Colors.BOLD}Category: {category['description']}{Colors.ENDC}\n")
-    selected_flags = []
+        # Define the file path for the JSON file
+        json_file_path = os.path.join(output_folder, OUTPUT_FILE)
 
-    # List out all flags and their descriptions
+        # Save the data to a JSON file with proper indentation
+        with open(json_file_path, 'w') as json_file:
+            json.dump(data, json_file, indent=2)
+
+    except Exception as e:
+        print(f"Error saving to JSON: {e}")
+
+# Load flag data from JSON file
+def load_flag_data(file_path="Nmap/flags_data.json"):
+    if not os.path.exists(file_path):
+        print(Colors.FAIL + f"Error: {file_path} does not exist." + Colors.END)
+        exit(1)
+    with open(file_path, "r") as file:
+        return json.load(file)
+
+# Handle value-required flags
+def handle_flag_value(flag_details):
+    if "value_prompt" in flag_details:
+        print(Colors.CYAN + flag_details["value_prompt"] + Colors.END, end=' ')
+        return input()
+    else:
+        print(Colors.FAIL + "Error: Value required but no prompt provided." + Colors.END)
+        return None
+
+# Commander Cody's category selection
+def select_flags_commander(category):
+    print(f"\n{Colors.BOLD}Category: {category['description']}{Colors.END}\n")
+    if "greeting" in category:
+        print(Colors.BLUE + category["greeting"] + Colors.END)
+
+    # Print all available flags in this category
+    print(Colors.WARNING + "Available flags:" + Colors.END)
     for i, (flag, details) in enumerate(category["flags"].items(), start=1):
-        print(f"{i}. {Colors.OKCYAN}{flag}{Colors.ENDC}: {details['description']}")
+        print(Colors.CYAN + str(i) +". " + Colors.END +flag +": " + details['description'])
 
-    # Ask user for selection
-    choice = input(Colors.WARNING + "Enter the number(s) of your choice, separated by commas (or 'skip' to decline): " + Colors.ENDC)
+    selected_flags = []
+    flag_list = []  # Initialize flag_list
+    choice = input(Colors.WARNING + "Enter the number(s) of your choice, separated by commas (or 'skip' to decline): " + Colors.END)
+
     if choice.lower() != 'skip':
         for i in choice.split(','):
             i = i.strip()
             if i.isdigit() and 1 <= int(i) <= len(category["flags"]):
                 selected_flag = list(category["flags"].keys())[int(i)-1]
                 flag_details = category["flags"][selected_flag]
-                selected_flags.append({"flag": selected_flag, "details": flag_details})
+                selected_flags.append({"flag": selected_flag})
+                flag_list.append(selected_flag)  # Add to the list for consolidated printing
+                if flag_details["value_required"]:
+                    flag_value = handle_flag_value(flag_details)
+                    selected_flags[-1]["value"] = flag_value
             else:
-                print(Colors.FAIL + f"Invalid selection: {i}" + Colors.ENDC)
+                print(Colors.FAIL + f"Invalid selection, trooper: {i}" + Colors.END)
 
+    # Print all selected flags in a single line
+    if flag_list:
+        print(
+            Colors.GREEN
+            + f"Good choice, trooper. Flags {', '.join(flag_list)} are locked and loaded."
+            + Colors.END
+        )
     return selected_flags
 
-def handle_flag_value(flag_details):
-    """If the flag requires a value, ask the user for it."""
-    if flag_details["value_required"]:
-        print(Colors.HEADER + flag_details["value_prompt"] + Colors.ENDC)
-        value = input(Colors.WARNING + "Enter value: " + Colors.ENDC)
-        return value
-    return None
 
-def nmap_wizard():
-    """Main wizard function to guide the user through selecting flags."""
+# Main wizard function
+def nmap_wizard_commander():
+    print(Colors.GREEN + "Welcome, trooper! Commander Cody reporting. Let's prepare for the scan mission." + Colors.END)
     selected_flags = []
-
-    # Load data from JSON
     flag_data = load_flag_data()
 
-    # Ask about network evasion preferences
-    network_evasion_choice = ask_question("Do you care about avoiding detection during your scan?",
-                                          {"1": "Network evasion flags help avoid detection.", "2": "No concern for evasion."})
-    if network_evasion_choice == '1':
-        selected_flags.extend(select_flags(flag_data["network_evasion"]))
+    for category_key, category_details in flag_data.items():
+        category_flags = select_flags_commander(category_details)
+        selected_flags.extend(category_flags)
 
-    # Ask about packet manipulation preferences
-    packet_manipulation_choice = ask_question("Do you want to manipulate packets to avoid detection?",
-                                              {"1": "Packet manipulation flags help modify packet behavior.", "2": "No concern for packet manipulation."})
-    if packet_manipulation_choice == '1':
-        selected_flags.extend(select_flags(flag_data["packet_manipulation"]))
-
-    # Ask about speed preferences
-    speed_choice = ask_question("Do you care about scan speed?", {"1": "Speed flags optimize scan times.", "2": "Scan speed isn't a priority."})
-    if speed_choice == '1':
-        selected_flags.extend(select_flags(flag_data["speed"]))
-
-    # Ask about detail preferences
-    detailed_choice = ask_question("Do you need detailed information?", {"1": "Detailed flags provide in-depth analysis of services.", "2": "You prefer a more basic scan."})
-    if detailed_choice == '1':
-        selected_flags.extend(select_flags(flag_data["detailed"]))
-
-    # Ask about aggressive scan preferences
-    aggressive_choice = ask_question("Do you want to run an aggressive scan?",
-                                     {"1": "Aggressive flags maximize scan results but may be loud.", "2": "Prefer a quieter scan."})
-    if aggressive_choice == '1':
-        selected_flags.extend(select_flags(flag_data["aggressive"]))
-
-    # Ask for values if necessary
-    final_flags = []
-    for selected_flag in selected_flags:
-        flag_value = handle_flag_value(selected_flag["details"])
-        if flag_value:
-            final_flags.append(f"{selected_flag['flag']}={flag_value}")
-        else:
-            final_flags.append(selected_flag['flag'])
-
-    # Output selected flags with values
-    print("\n" + Colors.OKGREEN + Colors.BOLD + "Selected Flags:" + Colors.ENDC)
-    if final_flags:
-        for flag in final_flags:
-            print(f"{Colors.OKCYAN}{flag}{Colors.ENDC}")
+    if selected_flags:
+        # Output flags as JSON for Go to consume
+        save_to_json(selected_flags)
     else:
-        print(Colors.FAIL + "No flags selected." + Colors.ENDC)
+        save_to_json("{}")
 
 
 if __name__ == "__main__":
-    nmap_wizard()
+    nmap_wizard_commander()

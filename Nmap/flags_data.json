@@ -1,115 +1,136 @@
 {
   "network_evasion": {
-    "description": "Network evasion options help you remain undetected during scans, like the stealth of an ARC Trooper moving through enemy lines.",
+    "description": "Commander Cody: \"We need to remain unseen, just like when we infiltrated those Separatist bases. Here are some tools to help us stay off their radar.\"",
     "flags": {
       "-sS": {
-        "description": "SYN scan (half-open scan) - stealthier than a full connect scan, like a Republic commando infiltrating the enemy lines.",
+        "description": "SYN scan (half-open scan) - stealthier than a full connect scan, like slipping past a droid patrol.",
         "value_required": false
       },
       "-sI": {
         "description": "Idle (Zombie) scan - uses a third party to send packets on your behalf, masking your true presence like a cloaked ARC Trooper.",
-        "value_required": false
+        "value_required": true,
+        "value_prompt": "Please enter the IP address of the zombie host (must have predictable IP ID behavior):"
       },
       "-D": {
         "description": "Decoy scan - sends packets from fake IP addresses to confuse the target, creating decoy targets like a clone army.",
-        "value_required": false
+        "value_required": true,
+        "value_prompt": "Please enter a comma-separated list of decoy IP addresses (e.g., 192.168.1.1,192.168.1.2):"
       },
       "-sA": {
-        "description": "ACK scan - attempts to map out firewall rules by sending ACK packets, like testing the defenses of a Separatist stronghold.",
+        "description": "ACK scan - maps out firewall rules, testing the defenses like probing a Separatist blockade.",
         "value_required": false
       },
       "--source-port": {
-        "description": "Specifies the source port number to be used, similar to disguising a Republic fleet's true location.",
+        "description": "Specifies the source port to use, like disguising the origin of a Republic fleet.",
         "value_required": true,
-        "value_prompt": "Please enter the source port number:"
+        "value_prompt": "Commander Cody: \"Enter the source port number you want to use. It must be convincing.\""
       },
       "--reason": {
-        "description": "Provides a reason for a closed port, akin to gathering intel about why a Separatist ship is avoiding battle.",
+        "description": "Provides reasons for a closed port, similar to gathering intel about the enemy's movements.",
         "value_required": false
       }
     }
   },
   "packet_manipulation": {
-    "description": "Packet manipulation options modify packet behavior to avoid detection by firewalls or IDS systems, like adjusting the trajectory of a torpedo to avoid interception.",
+    "description": "Commander Cody: \"Sometimes, you've got to modify your signals to bypass defenses, just like we adjusted our approach to take out those heavy cannons.\"",
     "flags": {
       "-f": {
-        "description": "Fragment packets - splits packets into smaller fragments to avoid detection by IDS systems, breaking up like pieces of a broken droid.",
+        "description": "Fragment packets - splits packets into 8 byte pieces to evade detection, like sneaking past an enemy blockade.",
         "value_required": false
       },
       "--spoof-mac": {
-        "description": "Spoof the MAC address of the host, as if adopting the identity of a Republic fleet ship.",
+        "description": "Spoof the MAC address, adopting a new identity like a clone assuming a false rank.",
         "value_required": true,
-        "value_prompt": "Please enter the MAC address to spoof (e.g., 00:11:22:33:44:55):"
+        "value_prompt": "Commander Cody: \"Enter the MAC address to use for spoofing. Keep it convincing.\""
       },
       "--spoof-ip": {
-        "description": "Spoof the source IP address, confusing the target into thinking the packets came from somewhere else, like a shadow in the galaxy.",
+        "description": "Spoof the source IP address, confusing the target as if the attack is coming from somewhere else.",
         "value_required": true,
-        "value_prompt": "Please enter the IP address to spoof (e.g., 192.168.1.100):"
+        "value_prompt": "Commander Cody: \"Enter the IP address you want to use as your cover.\""
       }
     }
   },
   "speed": {
-    "description": "Speed options help optimize scan times, mimicking the swift strike of a Jedi or a swift TIE fighter attack.",
+    "description": "Commander Cody: \"Time is of the essence, trooper! Let's adjust the pace of our operation.\"",
     "flags": {
       "-T4": {
-        "description": "Timing template (Aggressive) - faster scans, but louder, like an all-out assault by Republic forces.",
+        "description": "Timing template (Aggressive) - faster scans, louder operations, like a blitz strike.",
         "value_required": false
       },
       "--min-rate": {
-        "description": "Set minimum packet send rate, increasing speed like a hyperdrive engaged at full speed.",
+        "description": "Set minimum packet send rate, ensuring consistent speed like a steady Republic march.",
         "value_required": false
       },
       "--max-rate": {
-        "description": "Set maximum packet send rate, limiting speed to avoid overloading the network, as if navigating an asteroid field.",
+        "description": "Set maximum packet send rate, avoiding overloading like managing supply lines in wartime.",
         "value_required": false
       },
       "-T5": {
-        "description": "Timing template (Insane) - the fastest scan, like a lightsaber strike in the heat of battle.",
+        "description": "Timing template (Insane) - the fastest scan, risky and aggressive, like charging into battle.",
         "value_required": false
       }
     }
   },
   "detailed": {
-    "description": "Detailed scanning options gather in-depth information about the target, similar to how a Jedi gathers intelligence before a mission.",
+    "description": "Commander Cody: \"Knowledge is power. Gather all the intel you can, just like a true Republic scout.\"",
     "flags": {
       "-sV": {
-        "description": "Service version detection - identifies services running on open ports, much like a Republic spy gathering intel from the Separatists.",
+        "description": "Service version detection - identifies services on ports, like analyzing enemy schematics.",
         "value_required": false
       },
       "-O": {
-        "description": "OS detection - attempts to identify the operating system of the target, like knowing the ship’s specs before a confrontation with a fleet.",
+        "description": "OS detection - identifies the target's operating system, knowing the enemy before striking.",
         "value_required": false
       },
       "--script": {
-        "description": "Nmap scripts - use specific scripts for vulnerabilities, brute forcing, etc., like utilizing special Republic tactics against droid armies.",
+        "description": "Nmap scripts - deploy scripts for vulnerabilities or information gathering, like specialized Republic tactics.",
         "value_required": true,
-        "value_prompt": "Please enter the script to use (e.g., vuln, discovery, etc.):"
+        "value_prompt": "Commander Cody: \"Enter the script type to use (e.g., vuln, discovery, brute force).\""
       },
       "-sC": {
-        "description": "Default script scan - runs a series of basic scripts to gather information, like sending a Jedi scout to assess the enemy’s weaknesses.",
+        "description": "Default script scan - runs a series of scripts for basic information, like a reconnaissance mission.",
         "value_required": false
       },
       "--traceroute": {
-        "description": "Traceroute - determines the path packets take to the target, tracing it like following the enemy's path in hyperspace.",
+        "description": "Traceroute - maps the path to the target, like tracking enemy supply lines.",
         "value_required": false
       }
     }
   },
   "aggressive": {
-    "description": "Aggressive scanning options maximize speed and results, but may attract attention like a loud assault.",
+    "description": "Commander Cody: \"Time for a full-scale assault. These flags pull out all the stops!\"",
     "flags": {
       "-A": {
-        "description": "Aggressive scan - performs OS detection, version detection, script scanning, and traceroute, similar to a full-scale Republic assault.",
+        "description": "Aggressive scan - OS detection, version detection, script scanning, and traceroute combined, like an all-out Republic attack.",
         "value_required": false
       },
       "-v": {
-        "description": "Verbose output - gives more detailed output about scan results, similar to a commander giving constant battle updates.",
+        "description": "Verbose output - detailed updates during scans, like constant battlefield reports.",
         "value_required": false
       },
       "--open": {
-        "description": "Show only open ports - like showing only the enemy’s weak points after a calculated strike.",
+        "description": "Show only open ports - focusing solely on vulnerabilities, like targeting weak spots in enemy defenses.",
         "value_required": false
       }
     }
-  }
+  },
+  "dns_and_host_discovery": {
+    "description": "Flags for DNS lookups and host discovery, allowing faster or more detailed scans.",
+    "flags": {
+      "-n": {
+        "description": "No DNS lookup - Skip DNS resolutions for faster scans, like bypassing unnecessary bureaucracy.",
+        "value_required": false
+      },
+      "-R": {
+        "description": "Reverse-DNS lookup for all hosts - Perform DNS lookups for every IP that responds, like gathering intel on all detected ships.",
+        "value_required": false
+      },
+      "-sn": {
+        "description": "Host discovery only - No port scanning, just checking who’s online, like sending out a scouting probe.",
+        "value_required": false
+      }
+    }
+
 }
+}
+
