@@ -2,6 +2,7 @@ import sys
 import re
 import json
 import os
+from typing import Optional
 
 
 def parse_nmap_output(nmap_output):
@@ -37,7 +38,7 @@ def parse_nmap_output(nmap_output):
             })
 
         # Match service info
-        service_info_match = service_info_pattern.match(line)
+        service_info_match: Optional[re.Match] = service_info_pattern.match(line)  # Add type hint here
         if service_info_match:
             result['service_info'] = service_info_match.group(1)
 
