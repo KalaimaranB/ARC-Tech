@@ -94,7 +94,7 @@ def save_to_files(nmap_output, parsed_result, nmap_files):
 
 
 def main():
-    print("Starting python analysis")
+    print("Starting python analysis on nmap output")
 
     # Read the entire content from stdin (fix for your error)
     nmap_output = sys.stdin.read()
