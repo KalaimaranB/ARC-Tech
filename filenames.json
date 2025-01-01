@@ -1,0 +1,9 @@
+[
+  {
+    "Nmap": {
+      "json": "nmap_output.json",
+      "text": "nmap_output.txt",
+      "config": "config/nmap_config.json"
+    }
+  }
+]

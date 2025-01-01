@@ -1,0 +1,10 @@
+  {
+  "nmap_flags": [
+    { "flag": "-sS", "value": "" },
+    { "flag": "-sV", "value": "" },
+    { "flag": "-T3", "value": "" },
+    { "flag": "-v", "value": "" },
+    { "flag": "-p-", "value": "" },
+    { "flag": "-n", "value": "" }
+  ]
+ }
