@@ -10,6 +10,7 @@ ARCTech was created as a learning project with the following objectives:
 - **Understand the Reconnaissance Phase**: Deepen understanding of the enumeration and reconnaissance stages of cybersecurity.
 - **Use Kali Linux**: Become proficient in Kali Linux and its ecosystem of penetration testing tools.
 - **Beginner-Friendly Automation**: Build a tool that automates the enumeration process, making it accessible to beginners while providing flexibility for intermediate users to customize and extend functionality.
+- **AI & ChatGPT**: To understand the extent to which modern AI tools can help automate both the creation of this project by helping with not just writing code, but higher level overview as well implementing AI APIs to analyze tasks.
 
 ## Features
 
@@ -37,12 +38,12 @@ ARCTech is designed for **Kali Linux** (or a similar Linux distribution) with th
 - **Python**
   - For scripting and managing tools like Hydra and DirBuster.
 
-### Dependcies
+### Dependencies
 - **Nmap**: For network reconnaissance and scanning.
 - **Hydra**: For performing brute-force password attacks (e.g., HTTP, SSH).
 - **DirBuster**: For brute-forcing directories and files on web servers.
 
 
 ### Notes
-This is an ongoing project for me to learn more about reconnaisance in cybersecurity. The goal is to automate as much of the early phase as possible to allow even beginners to get a quick understanding of the "landscape" they are targeting. 
+This is an ongoing project for me to learn more about reconnaissance in cybersecurity. The goal is to automate as much of the early phase as possible to allow even beginners to get a quick understanding of the "landscape" they are targeting. 
 

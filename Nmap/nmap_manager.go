@@ -15,229 +15,263 @@ import (
 	"time"
 )
 
-// ExecuteNmap initiates a Nmap scan for the given target IP, displays themed messages during execution,
-// and processes the output with a Python script.
+// ExecuteNmap initiates a Nmap scan for the given target IP.
+//
 // Parameters:
-// - targetIP: The target IP address to scan.
-func ExecuteNmap(targetIP string) {
-	greenBold := color.New(color.FgGreen, color.Bold)
-	var userInput string
+//   - targetIP: The IP address of the target for the Nmap scan.
+//   - defaultState: A boolean flag to determine whether to use default options.
+//
+// Objective:
+//
+//	Depending on user input, this function either runs a default scan,
+//	allows custom flags, or invokes an interactive wizard for flag selection.
+//
+// Error Handling:
+//   - Handles errors in reading user input and exits with a log message if invalid.
+func ExecuteNmap(targetIP string, defaultState bool) {
+	if defaultState {
+		useDefaultOptions(targetIP)
+		return
+	}
 
-	fmt.Println("First task is to run an nmap scan with Commander Cody. Would you like to:")
+	fmt.Println("First task is to run an Nmap scan with Commander Cody. Would you like to:")
 	fmt.Println("(1) Use default options")
-	fmt.Println("(2) Type your own nmap command line flags")
+	fmt.Println("(2) Type your own Nmap command line flags")
 	fmt.Println("(3) Have Commander Cody assist in building a command")
 
+	var userInput string
 	_, err := fmt.Scanln(&userInput)
+	if err != nil {
+		log.Fatalf("Failed to read input: %v", err)
+	}
 
-	// Check user input and handle accordingly
-	var cmdArgs []string
 	switch userInput {
 	case "1":
-		// Search for the config file path
-		filePath, err := Utilities.SearchFileNames("Nmap", "config")
-		if err != nil {
-			log.Fatalf("Failed to locate config file: %v", err)
-		}
-
-		// Load default Nmap options
-		Utilities.ErrorCheckedColourPrint(greenBold, "Using default Nmap options.")
-		cmdArgs, err = loadDefaultNmapFlags(filePath)
-		if err != nil {
-			log.Fatalf("Failed to load default options: %v", err)
-		}
-		cmdArgs = append(cmdArgs, targetIP)
-
+		useDefaultOptions(targetIP)
 	case "2":
-		fmt.Println("Enter your custom nmap flags:")
-		reader := bufio.NewReader(os.Stdin)
-		customFlags, err := reader.ReadString('\n') // Read the full line of input
-		if err != nil {
-			fmt.Println("Error reading input:", err)
-			return
-		}
-
-		customFlags = strings.TrimSpace(customFlags)
-		// Proceed to use the flags provided
-		fmt.Println("You entered:", customFlags)
-		// Add customFlags to the nmap command
-		customFlagsList := strings.Fields(customFlags) // Split by spaces
-		cmdArgs = append(cmdArgs, customFlagsList...)  // Add custom flags to the nmap command
-		cmdArgs = append(cmdArgs, targetIP)
-
+		useCustomOptions(targetIP)
 	case "3":
-		// Integrate Commander Cody's assistance (interactive flag selection)
-		Utilities.ErrorCheckedColourPrint(greenBold, "Commander Cody is assisting you with flag selection...")
-		cmdArgs, err = getCommanderCodyFlags(targetIP)
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
+		useCommanderCody(targetIP)
 	default:
 		fmt.Println("Invalid option selected, exiting.")
 		os.Exit(1)
 	}
+}
 
-	// Start themed messages in a goroutine
+// useDefaultOptions runs a Nmap scan using default configurations.
+//
+// Parameters:
+//   - targetIP: The IP address of the target for the Nmap scan.
+//
+// Objective:
+//
+//	Reads default configurations from a JSON file and executes the Nmap scan.
+//
+// Error Handling:
+//   - Logs and exits if the config file is not found or cannot be parsed.
+func useDefaultOptions(targetIP string) {
+	greenBold := color.New(color.FgGreen, color.Bold)
+	filePath, err := Utilities.SearchFileNames("Nmap", "config")
+	if err != nil {
+		log.Fatalf("Failed to locate config file: %v", err)
+	}
+
+	Utilities.ErrorCheckedColourPrint(greenBold, "Using default Nmap options.")
+	cmdArgs, err := loadDefaultNmapFlags(filePath)
+	if err != nil {
+		log.Fatalf("Failed to load default options: %v", err)
+	}
+	executeNmapScan(targetIP, cmdArgs)
+}
+
+// useCustomOptions prompts the user to input custom Nmap flags.
+//
+// Parameters:
+//   - targetIP: The IP address of the target for the Nmap scan.
+//
+// Objective:
+//
+//	Allows users to manually specify Nmap flags and executes the scan with them.
+//
+// Error Handling:
+//   - Logs and exits if there is an error reading user input.
+func useCustomOptions(targetIP string) {
+	fmt.Println("Enter your custom Nmap flags:")
+	reader := bufio.NewReader(os.Stdin)
+	customFlags, err := reader.ReadString('\n')
+	if err != nil {
+		log.Fatalf("Error reading input: %v", err)
+	}
+
+	customFlags = strings.TrimSpace(customFlags)
+	cmdArgs := strings.Fields(customFlags)
+	executeNmapScan(targetIP, cmdArgs)
+}
+
+// useCommanderCody uses an interactive script to assist in building Nmap flags.
+//
+// Parameters:
+//   - targetIP: The IP address of the target for the Nmap scan.
+//
+// Objective:
+//
+//	Invokes a Python-based wizard to generate Nmap flags and executes the scan.
+//
+// Error Handling:
+//   - Logs and exits if there is an error invoking the wizard or processing its output.
+func useCommanderCody(targetIP string) {
+	greenBold := color.New(color.FgGreen, color.Bold)
+	Utilities.ErrorCheckedColourPrint(greenBold, "Commander Cody is assisting you with flag selection...")
+	cmdArgs, err := getCommanderCodyFlags()
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+	executeNmapScan(targetIP, cmdArgs)
+}
+
+// executeNmapScan runs the Nmap scan and handles its output.
+//
+// Parameters:
+//   - targetIP: The IP address of the target for the Nmap scan.
+//   - cmdArgs: A slice of strings representing the Nmap command-line arguments.
+//
+// Objective:
+//
+//	Executes the Nmap command with the specified arguments, processes its output, and
+//	invokes a Python script for further analysis.
+//
+// Error Handling:
+//   - Logs and exits if Nmap execution or Python script processing fails.
+func executeNmapScan(targetIP string, cmdArgs []string) {
 	stopChan := make(chan bool)
 	go showCloneWarsThemedMessages(stopChan)
 
-	// Execute Nmap scan with the constructed command
-	fmt.Println("Executing nmap with :" + strings.Join(cmdArgs, " ") + " ...")
-	cmdArgs = append(cmdArgs, "-oX", "output/nmap_xml.xml")
-	fmt.Println(cmdArgs)
+	cmdArgs = append(cmdArgs, targetIP, "-oX", "output/nmap_xml.xml")
+	fmt.Println("Executing Nmap with:", strings.Join(cmdArgs, " "))
+
 	nmapOutput, err := runNmap(cmdArgs)
-
-	// Stop themed messages
 	stopChan <- true
-
 	if err != nil {
-		fmt.Printf("Error running Nmap: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Error running Nmap: %v", err)
 	}
 
 	fmt.Println("Nmap scan complete. Passing data to Python script...")
-
-	// Execute Python script
-	err = runPythonScript(nmapOutput)
-	if err != nil {
-		fmt.Printf("Error running Python script: %v\n", err)
-		os.Exit(1)
+	if err := runPythonScript(nmapOutput); err != nil {
+		log.Fatalf("Error running Python script: %v", err)
 	}
 
-	Utilities.ErrorCheckedColourPrint(greenBold, "Nmap processing complete.")
+	color.New(color.FgGreen, color.Bold).Println("Nmap processing complete.")
 }
 
-// Function to load default Nmap flags from the JSON file
-// Function to load default Nmap flags from the JSON file
+// loadDefaultNmapFlags loads default Nmap flags from a JSON file.
+//
+// Parameters:
+//   - filename: Path to the JSON configuration file.
+//
+// Returns:
+//   - A slice of strings containing Nmap command-line arguments.
+//   - An error if the file cannot be opened or parsed.
 func loadDefaultNmapFlags(filename string) ([]string, error) {
-	configs, err := Utilities.LoadFilenamesConfig(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return nil, fmt.Errorf("error loading Nmap flags from %s: %v", filename, err)
 	}
+	defer file.Close()
 
-	// Assume the first config contains the "nmap_flags" key
-	if len(configs) == 0 {
-		return nil, fmt.Errorf("no configurations found in file")
+	var configs []map[string]string
+	if err := json.NewDecoder(file).Decode(&configs); err != nil {
+		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
-	nmapFlags, ok := configs[0]["nmap_flags"].([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("'nmap_flags' key is missing or malformed")
-	}
-
-	// Convert the flags into a slice of strings
 	var cmdArgs []string
-	for _, item := range nmapFlags {
-		flag, isMap := item.(map[string]interface{})
-		if !isMap {
-			continue
-		}
-
-		// Extract flag and value
-		flagName, _ := flag["flag"].(string)
-		flagValue, _ := flag["value"].(string)
-
-		cmdArgs = append(cmdArgs, flagName)
-		if flagValue != "" {
-			cmdArgs = append(cmdArgs, flagValue)
+	for _, flag := range configs {
+		cmdArgs = append(cmdArgs, flag["flag"])
+		if value := flag["value"]; value != "" {
+			cmdArgs = append(cmdArgs, value)
 		}
 	}
 
 	return cmdArgs, nil
 }
 
-// getCommanderCodyFlags interacts with Commander Cody to select Nmap flags
-func getCommanderCodyFlags(targetIP string) ([]string, error) {
-	// Create the Python command
+// getCommanderCodyFlags invokes the wizard to select Nmap flags.
+//
+// Returns:
+//   - A slice of strings containing Nmap command-line arguments.
+//   - An error if the wizard or its output processing fails.
+func getCommanderCodyFlags() ([]string, error) {
 	cmd := exec.Command("python3", "Nmap/nmap_wizard.py")
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 
-	// Attach Stdin, Stdout, and Stderr to allow interaction
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	// Run the Python script
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("error invoking Commander Cody: %v", err)
 	}
 
-	// Read JSON file
 	jsonFile, err := os.Open("intermediate_data/selected_nmap_flags.json")
 	if err != nil {
 		return nil, fmt.Errorf("error reading JSON file: %v", err)
 	}
-	defer func(jsonFile *os.File) {
-		err := jsonFile.Close()
-		if err != nil {
+	defer jsonFile.Close()
 
-		}
-	}(jsonFile)
-
-	// Parse JSON file into Go structure
 	var selectedFlags []map[string]string
 	if err := json.NewDecoder(jsonFile).Decode(&selectedFlags); err != nil {
 		return nil, fmt.Errorf("error parsing JSON: %v", err)
 	}
 
-	// Convert the parsed flags to command-line arguments
 	var cmdArgs []string
 	for _, flag := range selectedFlags {
-		if value, exists := flag["value"]; exists {
-			cmdArgs = append(cmdArgs, fmt.Sprintf("%s=%s", flag["flag"], value))
-		} else {
-			cmdArgs = append(cmdArgs, flag["flag"])
+		cmdArgs = append(cmdArgs, flag["flag"])
+		if value, exists := flag["value"]; exists && value != "" {
+			cmdArgs = append(cmdArgs, value)
 		}
 	}
 
-	// Add target IP as the first argument
-	return append([]string{targetIP}, cmdArgs...), nil
+	return cmdArgs, nil
 }
 
-// runNmap executes a Nmap scan with the specified parameters and captures the output.
+// runNmap executes a Nmap scan and captures the output.
+//
 // Parameters:
-// - target: The target IP or hostname to scan.
-// - cmdArgs: The arguments for the Nmap command.
+//   - cmdArgs: A slice of strings representing the Nmap command-line arguments.
+//
 // Returns:
-// - string: The captured output from the Nmap scan.
-// - error: Any errors encountered during execution.
+//   - A string containing the output from the Nmap scan.
+//   - An error if the Nmap command fails.
 func runNmap(cmdArgs []string) (string, error) {
-	// Execute the Nmap command
 	cmd := exec.Command("nmap", cmdArgs...)
 	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+	cmd.Stdout, cmd.Stderr = &out, &out
 
-	err := cmd.Run()
-	if err != nil {
+	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("Nmap execution failed: %v\nOutput: %s", err, out.String())
 	}
 	return out.String(), nil
 }
 
-// runPythonScript invokes a Python script and passes the Nmap output via stdin.
+// runPythonScript processes Nmap output using a Python script.
+//
 // Parameters:
-// - input: The output from the Nmap scan to be processed by the Python script.
+//   - input: A string containing the output of the Nmap scan.
+//
 // Returns:
-// - error: Any errors encountered during execution.
+//   - An error if the Python script execution fails.
 func runPythonScript(input string) error {
 	cmd := exec.Command("python3", "Nmap/process_nmap.py")
-
-	// Pass Nmap output to Python script via stdin
 	cmd.Stdin = bytes.NewReader([]byte(input))
-
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("Python script execution failed: %v\n", err)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("python script execution failed: %v", err)
 	}
 	return nil
 }
 
-// showCloneWarsThemedMessages prints themed messages at regular intervals during the scan process.
-// It stops when a signal is received on the stopChan channel.
+// showCloneWarsThemedMessages prints themed messages during the scan process.
+//
 // Parameters:
-// - stopChan: A channel used to signal when the messages should stop.
+//   - stopChan: A channel to signal when to stop printing messages.
+//
+// Objective:
+//
+//	Displays periodic themed messages to entertain the user during the scan.
 func showCloneWarsThemedMessages(stopChan chan bool) {
 	messages := []string{
 		"The battlefield is quiet, but the Force is with us.",
@@ -255,38 +289,28 @@ func showCloneWarsThemedMessages(stopChan chan bool) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 
-	// Function to shuffle the messages
 	shuffleMessages := func() []string {
 		shuffled := make([]string, len(messages))
 		copy(shuffled, messages)
-		rand.Shuffle(len(shuffled), func(i, j int) {
-			shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
-		})
+		rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
 		return shuffled
 	}
 
 	shuffledMessages := shuffleMessages()
 	index := 0
-
-	// Record the start time
 	startTime := time.Now()
 
 	for {
 		select {
 		case <-ticker.C:
-			// Calculate elapsed time
 			elapsedTime := time.Since(startTime).Truncate(time.Second)
-			// Print the next message and the elapsed time
 			fmt.Printf("%s (Elapsed: %s)\n", color.YellowString(shuffledMessages[index]), elapsedTime)
 			index++
-
-			// Reshuffle messages when all have been used
 			if index >= len(shuffledMessages) {
 				shuffledMessages = shuffleMessages()
 				index = 0
 			}
 		case <-stopChan:
-			// Stop the ticker when the channel receives a signal
 			return
 		}
 	}
